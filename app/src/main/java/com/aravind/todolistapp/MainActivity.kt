@@ -22,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,43 +37,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ToDoListAppTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) {
-                    ToDoList()
-                }
-            }
+            ToDoListScreen()
         }
     }
 }
 
 @Composable
-fun ToDoList(
-    modifier: Modifier = Modifier, toDoList: List<ToDo> = remember {
-        getAllToDoList()
-    }
-) {
-    LazyColumn(modifier = modifier) {
-        items(toDoList) { toDoItem ->
-            ToDoItem(
-                taskName = toDoItem.taskName
-            )
+fun ToDoListScreen(modifier: Modifier = Modifier) {
+    val list = remember { getAllToDoList().toMutableStateList() }
+    ToDoList(toDoList = list, onDeleteTask = { toDoItem -> list.remove(toDoItem) })
+}
+
+@Composable
+fun ToDoList(modifier: Modifier = Modifier, toDoList: List<ToDo>, onDeleteTask: (ToDo) -> Unit) {
+    LazyColumn(modifier = modifier, state = rememberLazyListState()) {
+        items(toDoList, key = { it.taskName }) { toDoItem ->
+            ToDoItem(taskName = toDoItem.taskName, onDeleteClick = { onDeleteTask(toDoItem) })
         }
     }
 }
 
 @Composable
 fun ToDoItem(
-    taskName: String, modifier: Modifier = Modifier
+    taskName: String, onDeleteClick: () -> Unit, modifier: Modifier = Modifier
 ) {
-    var isCompleted by remember { mutableStateOf(false) }
+    var isCompleted by rememberSaveable { mutableStateOf(false) }
     ToDoItem(
         taskName = taskName,
         isCompleted = isCompleted,
         onCheckedChange = { newValue -> isCompleted = newValue },
-        onDelete = {},
+        onDeleteClick = onDeleteClick,
         modifier = modifier
     )
 }
@@ -81,7 +76,7 @@ fun ToDoItem(
     taskName: String,
     isCompleted: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onDelete: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -90,7 +85,7 @@ fun ToDoItem(
         Checkbox(checked = isCompleted, onCheckedChange = onCheckedChange)
         Text(text = taskName, modifier = Modifier.weight(1f))
         IconButton(
-            modifier = Modifier.then(Modifier.size(48.dp)), onClick = onDelete
+            modifier = Modifier.then(Modifier.size(48.dp)), onClick = onDeleteClick
         ) {
             Icon(
                 Icons.Filled.Delete, "delete button", tint = Color.Red
